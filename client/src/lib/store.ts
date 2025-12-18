@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { SceneObject, ObjectType, ToolType, Material, Vector3 } from "@shared/schema";
 import { createDefaultSceneObject } from "@shared/schema";
+import { useHistoryStore } from "./history";
 
 interface Scene {
   id: string;
@@ -72,6 +73,11 @@ interface EditorState {
   setSceneId: (id: string | null) => void;
   markClean: () => void;
   getSelectedObject: () => SceneObject | undefined;
+  
+  // History actions
+  saveToHistory: () => void;
+  undo: () => void;
+  redo: () => void;
 }
 
 let objectCounter = 0;
@@ -93,6 +99,11 @@ const getObjectName = (type: ObjectType, objects: SceneObject[]) => {
   return existingCount > 0 ? `${baseName}.${String(existingCount + 1).padStart(3, "0")}` : baseName;
 };
 
+// Initialize history on module load
+setTimeout(() => {
+  useHistoryStore.getState().initialize([], null);
+}, 0);
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   // Initial state
   sceneId: null,
@@ -112,13 +123,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // Object actions
   addObject: (type) => {
     const state = get();
+    useHistoryStore.getState().pushState(state.objects, state.selectedObjectId);
+    
     const name = getObjectName(type, state.objects);
     const newObject: SceneObject = {
       id: generateId(),
       ...createDefaultSceneObject(type, name),
     };
     
-    // Position new objects slightly above the ground
     if (type !== "plane") {
       newObject.position.y = type === "sphere" ? 1 : 0.5;
     }
@@ -132,6 +144,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   removeObject: (id) => {
     const state = get();
+    useHistoryStore.getState().pushState(state.objects, state.selectedObjectId);
+    
     set({
       objects: state.objects.filter((o) => o.id !== id),
       selectedObjectId: state.selectedObjectId === id ? null : state.selectedObjectId,
@@ -142,14 +156,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectObject: (id) => set({ selectedObjectId: id }),
   
   updateObject: (id, updates) => {
+    const state = get();
+    useHistoryStore.getState().pushState(state.objects, state.selectedObjectId);
+    
     set({
-      objects: get().objects.map((o) => (o.id === id ? { ...o, ...updates } : o)),
+      objects: state.objects.map((o) => (o.id === id ? { ...o, ...updates } : o)),
       isDirty: true,
     });
   },
   
   duplicateObject: (id) => {
     const state = get();
+    useHistoryStore.getState().pushState(state.objects, state.selectedObjectId);
+    
     const original = state.objects.find((o) => o.id === id);
     if (!original) return;
     
@@ -262,28 +281,64 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   // Scene actions
   setSceneName: (name) => set({ sceneName: name, isDirty: true }),
-  clearScene: () => set({ 
-    sceneId: null,
-    objects: [], 
-    selectedObjectId: null, 
-    currentFrame: 0,
-    sceneName: "Untitled Scene",
-    isDirty: false,
-  }),
-  loadScene: (scene) => set({
-    sceneId: scene.id,
-    sceneName: scene.name,
-    objects: scene.objects,
-    currentFrame: scene.currentFrame,
-    totalFrames: scene.totalFrames,
-    fps: scene.fps,
-    selectedObjectId: null,
-    isDirty: false,
-  }),
+  clearScene: () => {
+    useHistoryStore.getState().clear();
+    set({ 
+      sceneId: null,
+      objects: [], 
+      selectedObjectId: null, 
+      currentFrame: 0,
+      sceneName: "Untitled Scene",
+      isDirty: false,
+    });
+    useHistoryStore.getState().initialize([], null);
+  },
+  loadScene: (scene) => {
+    useHistoryStore.getState().clear();
+    set({
+      sceneId: scene.id,
+      sceneName: scene.name,
+      objects: scene.objects,
+      currentFrame: scene.currentFrame,
+      totalFrames: scene.totalFrames,
+      fps: scene.fps,
+      selectedObjectId: null,
+      isDirty: false,
+    });
+    useHistoryStore.getState().initialize(scene.objects, null);
+  },
   setSceneId: (id) => set({ sceneId: id }),
   markClean: () => set({ isDirty: false }),
   getSelectedObject: () => {
     const state = get();
     return state.objects.find((o) => o.id === state.selectedObjectId);
+  },
+  
+  // History actions
+  saveToHistory: () => {
+    const state = get();
+    useHistoryStore.getState().pushState(state.objects, state.selectedObjectId);
+  },
+  
+  undo: () => {
+    const entry = useHistoryStore.getState().undo();
+    if (entry) {
+      set({
+        objects: entry.objects,
+        selectedObjectId: entry.selectedObjectId,
+        isDirty: true,
+      });
+    }
+  },
+  
+  redo: () => {
+    const entry = useHistoryStore.getState().redo();
+    if (entry) {
+      set({
+        objects: entry.objects,
+        selectedObjectId: entry.selectedObjectId,
+        isDirty: true,
+      });
+    }
   },
 }));

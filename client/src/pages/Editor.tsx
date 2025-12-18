@@ -33,6 +33,8 @@ export default function Editor() {
     selectedObjectId,
     duplicateObject,
     removeObject,
+    undo,
+    redo,
   } = useEditorStore();
   
   // Keyboard shortcuts
@@ -72,6 +74,14 @@ export default function Editor() {
               duplicateObject(selectedObjectId);
             }
             break;
+          case "z":
+            e.preventDefault();
+            undo();
+            break;
+          case "y":
+            e.preventDefault();
+            redo();
+            break;
         }
       }
       
@@ -88,7 +98,7 @@ export default function Editor() {
     
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setActiveTool, selectedObjectId, duplicateObject, removeObject, addObject]);
+  }, [setActiveTool, selectedObjectId, duplicateObject, removeObject, addObject, undo, redo]);
   
   return (
     <div className="h-screen w-screen flex flex-col bg-background overflow-hidden" data-testid="editor">

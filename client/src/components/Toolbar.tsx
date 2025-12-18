@@ -41,7 +41,10 @@ import {
   ChevronDown,
   Save,
   FilePlus,
+  Undo2,
+  Redo2,
 } from "lucide-react";
+import { useHistoryStore } from "@/lib/history";
 
 const toolItems: { id: ToolType; icon: typeof MousePointer2; label: string; shortcut: string }[] = [
   { id: "select", icon: MousePointer2, label: "Select", shortcut: "Q" },
@@ -112,7 +115,10 @@ export function Toolbar() {
     setSceneId,
     markClean,
     isDirty,
+    undo,
+    redo,
   } = useEditorStore();
+  const { canUndo, canRedo } = useHistoryStore();
   const { toast } = useToast();
   const createScene = useCreateScene();
   const updateScene = useUpdateScene();
@@ -226,6 +232,47 @@ export function Toolbar() {
             </Button>
           </TooltipTrigger>
           <TooltipContent side="bottom">Save Scene (Ctrl+S)</TooltipContent>
+        </Tooltip>
+      </div>
+      
+      <Separator orientation="vertical" className="h-6 mx-1" />
+      
+      {/* Undo/Redo */}
+      <div className="flex items-center gap-0.5">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={undo}
+              disabled={!canUndo()}
+              data-testid="undo"
+            >
+              <Undo2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="flex items-center gap-2">
+            <span>Undo</span>
+            <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Ctrl+Z</kbd>
+          </TooltipContent>
+        </Tooltip>
+        
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={redo}
+              disabled={!canRedo()}
+              data-testid="redo"
+            >
+              <Redo2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="flex items-center gap-2">
+            <span>Redo</span>
+            <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Ctrl+Y</kbd>
+          </TooltipContent>
         </Tooltip>
       </div>
       
