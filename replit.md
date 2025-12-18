@@ -1,7 +1,7 @@
-# 3D Studio - Modeling, Animation & Video Editing Tool
+# 3D Studio - Modeling, Animation, Video Editing & Compositing Tool
 
 ## Overview
-A web-based 3D modeling and animation application built with React, Three.js, and Express. The app provides a professional interface for creating and animating 3D scenes with primitives, and exporting them as GLTF/GLB files. Now includes integrated video editing capabilities with multi-track timeline, audio mixing, and visual scopes.
+A web-based creative suite built with React, Three.js, and Express. Features three integrated editors: 3D modeling with primitives and animation, professional video editing with multi-track timeline, and a node-based compositor for visual effects and compositing.
 
 ## Features
 
@@ -31,10 +31,21 @@ A web-based 3D modeling and animation application built with React, Three.js, an
 - **Transitions**: Fade, dissolve, wipe, slide, zoom, push, iris transitions
 - **Keyframe Animation**: Animate effect parameters over time
 
+### Compositor Node Editor
+- **Visual Node Graph**: Canvas-based node editor with panning, zooming, and bezier curve connections
+- **Keying Nodes**: Chroma Key, Luminance Key, Difference Key with adjustable parameters
+- **Matte Cleanup**: Dilate/Erode, Blur, Despill nodes for refining mattes
+- **Alpha Blending**: Alpha Over, Mix nodes with blend modes (Add, Multiply, Screen, Overlay)
+- **Color Correction**: Color Correction, Curves, Levels, Hue/Saturation nodes
+- **Transform Nodes**: Position, rotation, scale transformations
+- **Input/Output**: Render Layers input, Image input, Composite and Viewer outputs
+- **Backdrop Preview**: View node output as canvas backdrop
+- **Node Properties**: Parameter editing panel with sliders, color pickers, and options
+
 ## Project Architecture
 
 ### Frontend (`client/src/`)
-- `App.tsx` - Main application with routing (3D and Video editors)
+- `App.tsx` - Main application with routing (3D, Video, and Compositor editors)
 - `pages/Editor.tsx` - 3D editor layout with panels and keyboard shortcuts
 - `pages/VideoEditor.tsx` - Video editor layout with timeline and scopes
 - `components/Viewport.tsx` - Three.js 3D viewport using React Three Fiber
@@ -49,8 +60,11 @@ A web-based 3D modeling and animation application built with React, Three.js, an
 - `components/MediaLibrary.tsx` - Media asset management
 - `components/ClipProperties.tsx` - Clip editing (speed, effects, transitions)
 - `components/SceneManager.tsx` - Scene saving and loading
+- `components/NodeEditor.tsx` - Visual node graph editor for compositing
+- `pages/CompositorEditor.tsx` - Compositor editor layout
 - `lib/store.ts` - Zustand state management for 3D editor
 - `lib/videoStore.ts` - Zustand state management for video editor
+- `lib/compositorStore.ts` - Zustand state management for compositor
 - `lib/history.ts` - History stack management for undo/redo
 - `lib/export.ts` - GLTF/GLB export functionality
 
@@ -59,7 +73,7 @@ A web-based 3D modeling and animation application built with React, Three.js, an
 - `storage.ts` - In-memory storage for scenes
 
 ### Shared (`shared/`)
-- `schema.ts` - TypeScript types and Zod schemas for 3D objects, scenes, materials, lights, camera, video timeline, clips, tracks, effects
+- `schema.ts` - TypeScript types and Zod schemas for 3D objects, scenes, materials, lights, camera, video timeline, clips, tracks, effects, compositor nodes and connections
 
 ## Tech Stack
 - **Frontend**: React, Three.js, React Three Fiber, Drei, Zustand, TailwindCSS, Shadcn UI
@@ -69,6 +83,7 @@ A web-based 3D modeling and animation application built with React, Three.js, an
 ## Routes
 - `/` or `/3d` - 3D Modeling Editor
 - `/video` - Video Editor
+- `/compositor` - Node-based Compositor
 
 ## Keyboard Shortcuts
 
@@ -123,7 +138,26 @@ A web-based 3D modeling and animation application built with React, Three.js, an
 - **Keying**: Chroma Key
 - **Advanced**: Color Balance, Curves, Levels
 
+## Compositor Node Types
+- **Input**: Image, Render Layers, Color
+- **Output**: Composite, Viewer
+- **Keying**: Chroma Key, Luminance Key, Difference Key
+- **Matte**: Dilate/Erode, Blur, Despill
+- **Color**: Color Correction, Curves, Levels, Hue/Saturation
+- **Mix**: Alpha Over, Mix (with blend modes)
+- **Transform**: Transform (position, rotation, scale)
+- **Utility**: Set Alpha, Invert
+
 ## Recent Changes
+- December 2024: Added compositor node editor
+  - Visual node graph with drag-and-drop connections
+  - 20+ node types across 8 categories
+  - Chroma key with tolerance, softness, spill suppression
+  - Matte cleanup tools (dilate/erode, blur, despill)
+  - Color correction with saturation, contrast, gamma, gain, lift
+  - Alpha Over blending with premultiply option
+  - Viewer node with backdrop preview
+  - Pan, zoom, and node property editing
 - December 2024: Added video editor integration
   - 32-track timeline for video, audio, images, 3D scenes, masks, effects
   - Live preview with transport controls
