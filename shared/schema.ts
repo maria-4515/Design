@@ -832,3 +832,198 @@ export function createCompositorNode(type: CompositorNodeType, position: { x: nu
 
 export const generateNodeId = () => `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 export const generateConnectionId = () => `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+// ===== CHARACTER ANIMATION TYPES =====
+
+// Bone/joint schema for skeleton
+export const boneSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  parentId: z.string().nullable(),
+  position: vector3Schema, // Local position relative to parent
+  rotation: vector3Schema, // Euler rotation in radians
+  length: z.number().default(1),
+  // IK settings
+  ikEnabled: z.boolean().default(false),
+  ikChainLength: z.number().int().min(1).default(2),
+  ikTarget: vector3Schema.optional(),
+  // Constraints
+  rotationLimitMin: vector3Schema.optional(),
+  rotationLimitMax: vector3Schema.optional(),
+});
+
+export type Bone = z.infer<typeof boneSchema>;
+
+// Pose - a snapshot of bone rotations
+export const poseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  boneTransforms: z.record(z.string(), z.object({
+    rotation: vector3Schema,
+    position: vector3Schema.optional(),
+    scale: vector3Schema.optional(),
+  })),
+});
+
+export type Pose = z.infer<typeof poseSchema>;
+
+// Skeleton/Armature schema
+export const skeletonSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  bones: z.array(boneSchema).default([]),
+  // Pose library
+  poses: z.array(poseSchema).default([]),
+  // Current pose being edited
+  currentPoseId: z.string().nullable().default(null),
+});
+
+export type Skeleton = z.infer<typeof skeletonSchema>;
+
+// Animation action/clip - a reusable animation
+export const animationActionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  // Keyframes per bone: boneId -> frame -> transform
+  boneKeyframes: z.record(z.string(), z.array(z.object({
+    frame: z.number().int().min(0),
+    rotation: vector3Schema,
+    position: vector3Schema.optional(),
+    scale: vector3Schema.optional(),
+  }))).default({}),
+  frameStart: z.number().int().min(0).default(0),
+  frameEnd: z.number().int().min(0).default(60),
+  // Playback settings
+  loop: z.boolean().default(true),
+  speed: z.number().min(0.1).max(10).default(1),
+});
+
+export type AnimationAction = z.infer<typeof animationActionSchema>;
+
+// NLA Strip - an instance of an action on the NLA timeline
+export const nlaStripSchema = z.object({
+  id: z.string(),
+  actionId: z.string(),
+  name: z.string(),
+  trackIndex: z.number().int().min(0).default(0),
+  // Position on NLA timeline
+  startFrame: z.number().int().min(0),
+  endFrame: z.number().int().min(0),
+  // Blend settings
+  blendIn: z.number().min(0).default(0),
+  blendOut: z.number().min(0).default(0),
+  blendMode: z.enum(["replace", "add", "multiply"]).default("replace"),
+  influence: z.number().min(0).max(1).default(1),
+  // Time mapping
+  scale: z.number().min(0.1).max(10).default(1),
+  repeat: z.number().min(1).default(1),
+  muted: z.boolean().default(false),
+});
+
+export type NlaStrip = z.infer<typeof nlaStripSchema>;
+
+// NLA Track - a row in the NLA editor
+export const nlaTrackSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  index: z.number().int().min(0),
+  strips: z.array(z.string()).default([]), // strip IDs
+  muted: z.boolean().default(false),
+  solo: z.boolean().default(false),
+  locked: z.boolean().default(false),
+});
+
+export type NlaTrack = z.infer<typeof nlaTrackSchema>;
+
+// Audio marker for lip sync / sound sync
+export const audioMarkerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  time: z.number().min(0), // in seconds
+  type: z.enum(["beat", "phoneme", "event", "custom"]).default("custom"),
+  // For phonemes
+  phoneme: z.string().optional(),
+  // Link to pose
+  poseId: z.string().optional(),
+});
+
+export type AudioMarker = z.infer<typeof audioMarkerSchema>;
+
+// Audio track for synchronization
+export const audioSyncTrackSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  audioUrl: z.string().optional(),
+  duration: z.number().min(0).default(0),
+  // Markers for sync points
+  markers: z.array(audioMarkerSchema).default([]),
+  // Waveform data (simplified peaks for visualization)
+  waveformPeaks: z.array(z.number()).default([]),
+  volume: z.number().min(0).max(2).default(1),
+  muted: z.boolean().default(false),
+});
+
+export type AudioSyncTrack = z.infer<typeof audioSyncTrackSchema>;
+
+// Character animation data container
+export const characterAnimationSchema = z.object({
+  skeleton: skeletonSchema.optional(),
+  actions: z.array(animationActionSchema).default([]),
+  nlaTracks: z.array(nlaTrackSchema).default([]),
+  nlaStrips: z.array(nlaStripSchema).default([]),
+  audioTracks: z.array(audioSyncTrackSchema).default([]),
+  // NLA playback settings
+  nlaCurrentFrame: z.number().int().min(0).default(0),
+  nlaTotalFrames: z.number().int().min(1).default(250),
+  nlaFps: z.number().int().min(1).default(24),
+});
+
+export type CharacterAnimation = z.infer<typeof characterAnimationSchema>;
+
+// IK solver types
+export type IKSolverType = "ccd" | "fabrik";
+
+// Preset bone configurations for common rigs
+export interface BonePreset {
+  id: string;
+  name: string;
+  bones: Omit<Bone, "id">[];
+}
+
+export const humanoidBonePreset: BonePreset = {
+  id: "humanoid",
+  name: "Humanoid",
+  bones: [
+    { name: "Root", parentId: null, position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.1, ikEnabled: false, ikChainLength: 1 },
+    { name: "Hips", parentId: "Root", position: { x: 0, y: 1, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.2, ikEnabled: false, ikChainLength: 1 },
+    { name: "Spine", parentId: "Hips", position: { x: 0, y: 0.2, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.3, ikEnabled: false, ikChainLength: 1 },
+    { name: "Chest", parentId: "Spine", position: { x: 0, y: 0.3, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.3, ikEnabled: false, ikChainLength: 1 },
+    { name: "Neck", parentId: "Chest", position: { x: 0, y: 0.3, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.1, ikEnabled: false, ikChainLength: 1 },
+    { name: "Head", parentId: "Neck", position: { x: 0, y: 0.1, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.2, ikEnabled: false, ikChainLength: 1 },
+    // Left arm
+    { name: "L_Shoulder", parentId: "Chest", position: { x: 0.2, y: 0.25, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.1, ikEnabled: false, ikChainLength: 1 },
+    { name: "L_UpperArm", parentId: "L_Shoulder", position: { x: 0.1, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.3, ikEnabled: false, ikChainLength: 1 },
+    { name: "L_LowerArm", parentId: "L_UpperArm", position: { x: 0.3, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.25, ikEnabled: false, ikChainLength: 1 },
+    { name: "L_Hand", parentId: "L_LowerArm", position: { x: 0.25, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.1, ikEnabled: true, ikChainLength: 3 },
+    // Right arm
+    { name: "R_Shoulder", parentId: "Chest", position: { x: -0.2, y: 0.25, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.1, ikEnabled: false, ikChainLength: 1 },
+    { name: "R_UpperArm", parentId: "R_Shoulder", position: { x: -0.1, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.3, ikEnabled: false, ikChainLength: 1 },
+    { name: "R_LowerArm", parentId: "R_UpperArm", position: { x: -0.3, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.25, ikEnabled: false, ikChainLength: 1 },
+    { name: "R_Hand", parentId: "R_LowerArm", position: { x: -0.25, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.1, ikEnabled: true, ikChainLength: 3 },
+    // Left leg
+    { name: "L_UpperLeg", parentId: "Hips", position: { x: 0.1, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: Math.PI }, length: 0.45, ikEnabled: false, ikChainLength: 1 },
+    { name: "L_LowerLeg", parentId: "L_UpperLeg", position: { x: 0, y: -0.45, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.4, ikEnabled: false, ikChainLength: 1 },
+    { name: "L_Foot", parentId: "L_LowerLeg", position: { x: 0, y: -0.4, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.15, ikEnabled: true, ikChainLength: 2 },
+    // Right leg
+    { name: "R_UpperLeg", parentId: "Hips", position: { x: -0.1, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: Math.PI }, length: 0.45, ikEnabled: false, ikChainLength: 1 },
+    { name: "R_LowerLeg", parentId: "R_UpperLeg", position: { x: 0, y: -0.45, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.4, ikEnabled: false, ikChainLength: 1 },
+    { name: "R_Foot", parentId: "R_LowerLeg", position: { x: 0, y: -0.4, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, length: 0.15, ikEnabled: true, ikChainLength: 2 },
+  ],
+};
+
+export const generateBoneId = () => `bone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export const generatePoseId = () => `pose_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export const generateActionId = () => `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export const generateNlaStripId = () => `strip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export const generateNlaTrackId = () => `nlatrack_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export const generateAudioMarkerId = () => `marker_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
