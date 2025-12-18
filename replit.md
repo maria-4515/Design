@@ -42,6 +42,15 @@ A web-based creative suite built with React, Three.js, and Express. Features thr
 - **Backdrop Preview**: View node output as canvas backdrop
 - **Node Properties**: Parameter editing panel with sliders, color pickers, and options
 
+### Character Animation
+- **Skeleton System**: Bone hierarchy with parent/child relationships
+- **Pose Editor**: Bone selection and rotation controls with pose library
+- **Humanoid Preset**: Pre-configured 20-bone skeleton (spine, arms, legs, head)
+- **IK Mode**: Inverse kinematics with CCD solver and configurable chain length
+- **Action Editor**: Create reusable animation clips with bone keyframes
+- **NLA Editor**: Non-linear animation with strips, blending, and layering
+- **Audio Sync**: Audio tracks with waveform visualization and sync markers
+
 ## Project Architecture
 
 ### Frontend (`client/src/`)
@@ -65,6 +74,10 @@ A web-based creative suite built with React, Three.js, and Express. Features thr
 - `lib/store.ts` - Zustand state management for 3D editor
 - `lib/videoStore.ts` - Zustand state management for video editor
 - `lib/compositorStore.ts` - Zustand state management for compositor
+- `lib/characterAnimStore.ts` - Zustand state management for character animation
+- `components/PoseEditor.tsx` - Bone hierarchy and pose controls
+- `components/NlaEditor.tsx` - NLA timeline with strips and audio
+- `pages/CharacterAnimEditor.tsx` - Character animation editor layout
 - `lib/history.ts` - History stack management for undo/redo
 - `lib/export.ts` - GLTF/GLB export functionality
 
@@ -73,7 +86,7 @@ A web-based creative suite built with React, Three.js, and Express. Features thr
 - `storage.ts` - In-memory storage for scenes
 
 ### Shared (`shared/`)
-- `schema.ts` - TypeScript types and Zod schemas for 3D objects, scenes, materials, lights, camera, video timeline, clips, tracks, effects, compositor nodes and connections
+- `schema.ts` - TypeScript types and Zod schemas for 3D objects, scenes, materials, lights, camera, video timeline, clips, tracks, effects, compositor nodes and connections, bones, poses, skeletons, animation actions, NLA strips/tracks, and audio sync
 
 ## Tech Stack
 - **Frontend**: React, Three.js, React Three Fiber, Drei, Zustand, TailwindCSS, Shadcn UI
@@ -84,6 +97,7 @@ A web-based creative suite built with React, Three.js, and Express. Features thr
 - `/` or `/3d` - 3D Modeling Editor
 - `/video` - Video Editor
 - `/compositor` - Node-based Compositor
+- `/character` - Character Animation Editor
 
 ## Keyboard Shortcuts
 
@@ -148,7 +162,21 @@ A web-based creative suite built with React, Three.js, and Express. Features thr
 - **Transform**: Transform (position, rotation, scale)
 - **Utility**: Set Alpha, Invert
 
+## Character Animation Features
+- **Pose Mode**: Select and rotate bones, save/load poses
+- **Action Mode**: Create animation clips with keyframes
+- **NLA Mode**: Combine actions with blend modes (replace/add/multiply)
+- **IK Chains**: Configure chain length 1-10, simplified CCD solver
+- **Audio Markers**: Beat, phoneme, event, and custom markers for lip sync
+
 ## Recent Changes
+- December 2024: Added character animation system
+  - Bone/skeleton hierarchy with humanoid preset (20 bones)
+  - Pose editor with rotation sliders and pose library
+  - IK mode with CCD solver and configurable chain length
+  - NLA editor with animation strips and blend modes
+  - Audio tracks with waveform and sync markers
+  - Action editor for reusable animation clips
 - December 2024: Added compositor node editor
   - Visual node graph with drag-and-drop connections
   - 20+ node types across 8 categories
