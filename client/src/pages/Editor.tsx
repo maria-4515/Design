@@ -29,6 +29,7 @@ export default function Editor() {
     toggleRightPanel,
     toggleBottomPanel,
     setActiveTool,
+    setEditMode,
     addObject,
     selectedObjectId,
     duplicateObject,
@@ -55,6 +56,16 @@ export default function Editor() {
           break;
         case "r":
           setActiveTool("scale");
+          break;
+      }
+      
+      // Edit mode shortcuts (1-2)
+      switch (e.key) {
+        case "1":
+          setEditMode("object");
+          break;
+        case "2":
+          setEditMode("vertex");
           break;
       }
       
@@ -98,7 +109,7 @@ export default function Editor() {
     
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setActiveTool, selectedObjectId, duplicateObject, removeObject, addObject, undo, redo]);
+  }, [setActiveTool, setEditMode, selectedObjectId, duplicateObject, removeObject, addObject, undo, redo]);
   
   return (
     <div className="h-screen w-screen flex flex-col bg-background overflow-hidden" data-testid="editor">

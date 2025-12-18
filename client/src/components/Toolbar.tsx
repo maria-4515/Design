@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { useEditorStore } from "@/lib/store";
 import { exportSceneToGLTF } from "@/lib/export";
 import { useToast } from "@/hooks/use-toast";
-import type { ObjectType, ToolType } from "@shared/schema";
+import type { ObjectType, ToolType, EditModeType } from "@shared/schema";
 import { useCreateScene, useUpdateScene } from "@/hooks/use-scenes";
 import { SceneManager } from "./SceneManager";
 import {
@@ -43,6 +43,13 @@ import {
   FilePlus,
   Undo2,
   Redo2,
+  Lightbulb,
+  Sun,
+  Flashlight,
+  SunDim,
+  Hexagon,
+  GitCommitHorizontal,
+  Grid3x3,
 } from "lucide-react";
 import { useHistoryStore } from "@/lib/history";
 
@@ -60,6 +67,18 @@ const primitiveItems: { id: ObjectType; icon: typeof Box; label: string }[] = [
   { id: "plane", icon: Square, label: "Plane" },
   { id: "cone", icon: Triangle, label: "Cone" },
   { id: "torus", icon: Donut, label: "Torus" },
+];
+
+const lightItems: { id: ObjectType; icon: typeof Lightbulb; label: string }[] = [
+  { id: "pointLight", icon: Lightbulb, label: "Point Light" },
+  { id: "directionalLight", icon: Sun, label: "Directional Light" },
+  { id: "spotLight", icon: Flashlight, label: "Spot Light" },
+  { id: "ambientLight", icon: SunDim, label: "Ambient Light" },
+];
+
+const editModeItems: { id: EditModeType; icon: typeof Box; label: string; shortcut: string }[] = [
+  { id: "object", icon: Box, label: "Object Mode", shortcut: "1" },
+  { id: "vertex", icon: GitCommitHorizontal, label: "Vertex Mode", shortcut: "2" },
 ];
 
 function ToolButton({ 
@@ -94,6 +113,38 @@ function ToolButton({
   );
 }
 
+function EditModeButton({ 
+  mode, 
+  isActive, 
+  onClick 
+}: { 
+  mode: typeof editModeItems[0]; 
+  isActive: boolean; 
+  onClick: () => void;
+}) {
+  const Icon = mode.icon;
+  
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={isActive ? "secondary" : "ghost"}
+          size="icon"
+          onClick={onClick}
+          className={isActive ? "bg-accent text-accent-foreground" : ""}
+          data-testid={`editmode-${mode.id}`}
+        >
+          <Icon className="h-4 w-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="flex items-center gap-2">
+        <span>{mode.label}</span>
+        <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">{mode.shortcut}</kbd>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function Toolbar() {
   const {
     activeTool,
@@ -117,6 +168,8 @@ export function Toolbar() {
     isDirty,
     undo,
     redo,
+    editMode,
+    setEditMode,
   } = useEditorStore();
   const { canUndo, canRedo } = useHistoryStore();
   const { toast } = useToast();
@@ -301,6 +354,20 @@ export function Toolbar() {
       
       <Separator orientation="vertical" className="h-6 mx-1" />
       
+      {/* Edit mode toggle */}
+      <div className="flex items-center gap-0.5">
+        {editModeItems.map((mode) => (
+          <EditModeButton
+            key={mode.id}
+            mode={mode}
+            isActive={editMode === mode.id}
+            onClick={() => setEditMode(mode.id)}
+          />
+        ))}
+      </div>
+      
+      <Separator orientation="vertical" className="h-6 mx-1" />
+      
       {/* Add primitive dropdown */}
       <DropdownMenu>
         <Tooltip>
@@ -317,6 +384,21 @@ export function Toolbar() {
         </Tooltip>
         <DropdownMenuContent align="start">
           {primitiveItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <DropdownMenuItem
+                key={item.id}
+                onClick={() => addObject(item.id)}
+                className="gap-2"
+                data-testid={`add-${item.id}`}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </DropdownMenuItem>
+            );
+          })}
+          <DropdownMenuSeparator />
+          {lightItems.map((item) => {
             const Icon = item.icon;
             return (
               <DropdownMenuItem

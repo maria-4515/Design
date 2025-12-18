@@ -17,6 +17,11 @@ import {
   FolderOpen,
   Folder,
   Ungroup,
+  Lightbulb,
+  Sun,
+  Flashlight,
+  SunDim,
+  Camera,
 } from "lucide-react";
 import { useState, createContext, useContext } from "react";
 import {
@@ -35,6 +40,10 @@ const objectIcons: Record<ObjectType, typeof Box> = {
   cone: Triangle,
   torus: Donut,
   group: Folder,
+  pointLight: Lightbulb,
+  directionalLight: Sun,
+  spotLight: Flashlight,
+  ambientLight: SunDim,
 };
 
 interface MultiSelectContextValue {
@@ -179,6 +188,24 @@ function ObjectItem({
   );
 }
 
+function CameraItem() {
+  const { isCameraSelected, selectCamera } = useEditorStore();
+  
+  return (
+    <div
+      className={`
+        flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer
+        ${isCameraSelected ? "bg-accent text-accent-foreground" : "hover-elevate"}
+      `}
+      onClick={() => selectCamera()}
+      data-testid="hierarchy-camera"
+    >
+      <Camera className="h-4 w-4 text-blue-400" />
+      <span className="text-sm font-medium truncate">Camera</span>
+    </div>
+  );
+}
+
 export function HierarchyPanel() {
   const { objects, selectedObjectId, groupSelectedObjects } = useEditorStore();
   const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([]);
@@ -229,6 +256,8 @@ export function HierarchyPanel() {
         
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-0.5">
+            <CameraItem />
+            <div className="my-2 border-t border-border" />
             {objects.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Box className="h-8 w-8 text-muted-foreground mb-2" />

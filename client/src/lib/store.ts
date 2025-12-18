@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { SceneObject, ObjectType, ToolType, Material, Vector3 } from "@shared/schema";
-import { createDefaultSceneObject } from "@shared/schema";
+import type { SceneObject, ObjectType, ToolType, Material, Vector3, LightProperties, CameraSettings, CameraKeyframe, EditModeType } from "@shared/schema";
+import { createDefaultSceneObject, defaultCameraSettings } from "@shared/schema";
 import { useHistoryStore } from "./history";
 
 interface Scene {
@@ -10,6 +10,7 @@ interface Scene {
   currentFrame: number;
   totalFrames: number;
   fps: number;
+  camera?: CameraSettings;
 }
 
 interface EditorState {
@@ -17,6 +18,10 @@ interface EditorState {
   sceneId: string | null;
   objects: SceneObject[];
   selectedObjectId: string | null;
+  
+  // Camera state
+  camera: CameraSettings;
+  isCameraSelected: boolean;
   
   // Animation state
   currentFrame: number;
@@ -26,6 +31,8 @@ interface EditorState {
   
   // Tool state
   activeTool: ToolType;
+  editMode: EditModeType;
+  selectedVertexIndex: number | null;
   
   // Panel visibility
   leftPanelOpen: boolean;
@@ -49,6 +56,7 @@ interface EditorState {
   setScale: (id: string, scale: Vector3) => void;
   setMaterial: (id: string, material: Partial<Material>) => void;
   toggleVisibility: (id: string) => void;
+  setLightProperties: (id: string, properties: Partial<LightProperties>) => void;
   
   // Animation actions
   setCurrentFrame: (frame: number) => void;
@@ -60,6 +68,8 @@ interface EditorState {
   
   // Tool actions
   setActiveTool: (tool: ToolType) => void;
+  setEditMode: (mode: EditModeType) => void;
+  selectVertex: (index: number | null) => void;
   
   // Panel actions
   toggleLeftPanel: () => void;
@@ -85,6 +95,14 @@ interface EditorState {
   setParent: (childId: string, parentId: string | null) => void;
   getChildren: (parentId: string) => SceneObject[];
   getRootObjects: () => SceneObject[];
+  
+  // Camera actions
+  selectCamera: () => void;
+  setCameraPosition: (position: Vector3) => void;
+  setCameraTarget: (target: Vector3) => void;
+  setCameraFov: (fov: number) => void;
+  addCameraKeyframe: () => void;
+  removeCameraKeyframe: (frame: number) => void;
 }
 
 let objectCounter = 0;
@@ -100,6 +118,10 @@ const getObjectName = (type: ObjectType, objects: SceneObject[]) => {
     cone: "Cone",
     torus: "Torus",
     group: "Group",
+    pointLight: "Point Light",
+    directionalLight: "Directional Light",
+    spotLight: "Spot Light",
+    ambientLight: "Ambient Light",
   };
   
   const baseName = typeNames[type];
@@ -117,11 +139,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   sceneId: null,
   objects: [],
   selectedObjectId: null,
+  camera: { ...defaultCameraSettings },
+  isCameraSelected: false,
   currentFrame: 0,
   totalFrames: 120,
   fps: 24,
   isPlaying: false,
   activeTool: "select",
+  editMode: "object",
+  selectedVertexIndex: null,
   leftPanelOpen: true,
   rightPanelOpen: true,
   bottomPanelOpen: true,
@@ -139,7 +165,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ...createDefaultSceneObject(type, name),
     };
     
-    if (type !== "plane") {
+    if (type === "pointLight" || type === "spotLight") {
+      newObject.position.y = 5;
+    } else if (type === "directionalLight") {
+      newObject.position = { x: 5, y: 10, z: 5 };
+    } else if (type !== "plane" && type !== "group" && type !== "ambientLight") {
       newObject.position.y = type === "sphere" ? 1 : 0.5;
     }
     
@@ -180,7 +210,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
   },
   
-  selectObject: (id) => set({ selectedObjectId: id }),
+  selectObject: (id) => set({ selectedObjectId: id, isCameraSelected: false, selectedVertexIndex: null }),
   
   updateObject: (id, updates) => {
     const state = get();
@@ -257,6 +287,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
   },
   
+  setLightProperties: (id, properties) => {
+    set({
+      objects: get().objects.map((o) =>
+        o.id === id && o.lightProperties
+          ? { ...o, lightProperties: { ...o.lightProperties, ...properties } }
+          : o
+      ),
+      isDirty: true,
+    });
+  },
+  
   // Animation actions
   setCurrentFrame: (frame) => set({ currentFrame: Math.max(0, Math.min(frame, get().totalFrames - 1)) }),
   setTotalFrames: (frames) => set({ totalFrames: Math.max(1, frames), isDirty: true }),
@@ -302,6 +343,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   // Tool actions
   setActiveTool: (tool) => set({ activeTool: tool }),
+  
+  setEditMode: (mode) => set({ editMode: mode, selectedVertexIndex: null }),
+  
+  selectVertex: (index) => set({ selectedVertexIndex: index }),
   
   // Panel actions
   toggleLeftPanel: () => set({ leftPanelOpen: !get().leftPanelOpen }),
@@ -491,5 +536,68 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   
   getRootObjects: () => {
     return get().objects.filter((o) => o.parentId === null);
+  },
+  
+  // Camera actions
+  selectCamera: () => {
+    set({ isCameraSelected: true, selectedObjectId: null });
+  },
+  
+  setCameraPosition: (position) => {
+    set((state) => ({
+      camera: { ...state.camera, position },
+      isDirty: true,
+    }));
+  },
+  
+  setCameraTarget: (target) => {
+    set((state) => ({
+      camera: { ...state.camera, target },
+      isDirty: true,
+    }));
+  },
+  
+  setCameraFov: (fov) => {
+    set((state) => ({
+      camera: { ...state.camera, fov },
+      isDirty: true,
+    }));
+  },
+  
+  addCameraKeyframe: () => {
+    const state = get();
+    const frame = state.currentFrame;
+    const existingIndex = state.camera.keyframes.findIndex((k) => k.frame === frame);
+    
+    const newKeyframe: CameraKeyframe = {
+      frame,
+      position: { ...state.camera.position },
+      target: { ...state.camera.target },
+      fov: state.camera.fov,
+    };
+    
+    let newKeyframes: CameraKeyframe[];
+    if (existingIndex >= 0) {
+      newKeyframes = [...state.camera.keyframes];
+      newKeyframes[existingIndex] = newKeyframe;
+    } else {
+      newKeyframes = [...state.camera.keyframes, newKeyframe].sort((a, b) => a.frame - b.frame);
+    }
+    
+    set({
+      camera: { ...state.camera, keyframes: newKeyframes },
+      isDirty: true,
+    });
+  },
+  
+  removeCameraKeyframe: (frame) => {
+    const state = get();
+    set({
+      camera: {
+        ...state.camera,
+        keyframes: state.camera.keyframes.filter((k) => k.frame !== frame),
+      },
+      isDirty: true,
+    });
   },
 }));
