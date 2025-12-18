@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Editor from "@/pages/Editor";
 import VideoEditor from "@/pages/VideoEditor";
 import CompositorEditor from "@/pages/CompositorEditor";
+import CharacterAnimEditor from "@/pages/CharacterAnimEditor";
 
 function Router() {
   return (
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/3d" component={Editor} />
       <Route path="/video" component={VideoEditor} />
       <Route path="/compositor" component={CompositorEditor} />
+      <Route path="/character" component={CharacterAnimEditor} />
       <Route component={NotFound} />
     </Switch>
   );
