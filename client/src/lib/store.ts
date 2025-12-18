@@ -78,6 +78,13 @@ interface EditorState {
   saveToHistory: () => void;
   undo: () => void;
   redo: () => void;
+  
+  // Grouping and parenting actions
+  groupSelectedObjects: (objectIds: string[]) => void;
+  ungroupObject: (groupId: string) => void;
+  setParent: (childId: string, parentId: string | null) => void;
+  getChildren: (parentId: string) => SceneObject[];
+  getRootObjects: () => SceneObject[];
 }
 
 let objectCounter = 0;
@@ -92,6 +99,7 @@ const getObjectName = (type: ObjectType, objects: SceneObject[]) => {
     plane: "Plane",
     cone: "Cone",
     torus: "Torus",
+    group: "Group",
   };
   
   const baseName = typeNames[type];
@@ -146,9 +154,28 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const state = get();
     useHistoryStore.getState().pushState(state.objects, state.selectedObjectId);
     
+    const objectToRemove = state.objects.find((o) => o.id === id);
+    if (!objectToRemove) return;
+    
+    const getDescendants = (parentId: string): string[] => {
+      const children = state.objects.filter((o) => o.parentId === parentId);
+      return children.flatMap((c) => [c.id, ...getDescendants(c.id)]);
+    };
+    const idsToRemove = new Set([id, ...getDescendants(id)]);
+    
+    let updatedObjects = state.objects.filter((o) => !idsToRemove.has(o.id));
+    
+    if (objectToRemove.parentId) {
+      updatedObjects = updatedObjects.map((o) =>
+        o.id === objectToRemove.parentId
+          ? { ...o, children: o.children.filter((c) => c !== id) }
+          : o
+      );
+    }
+    
     set({
-      objects: state.objects.filter((o) => o.id !== id),
-      selectedObjectId: state.selectedObjectId === id ? null : state.selectedObjectId,
+      objects: updatedObjects,
+      selectedObjectId: idsToRemove.has(state.selectedObjectId ?? "") ? null : state.selectedObjectId,
       isDirty: true,
     });
   },
@@ -181,6 +208,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         y: original.position.y,
         z: original.position.z,
       },
+      parentId: null,
+      children: [],
     };
     
     set({
@@ -340,5 +369,127 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         isDirty: true,
       });
     }
+  },
+  
+  // Grouping and parenting actions
+  groupSelectedObjects: (objectIds) => {
+    const state = get();
+    if (objectIds.length < 2) return;
+    
+    useHistoryStore.getState().pushState(state.objects, state.selectedObjectId);
+    
+    const groupName = getObjectName("group", state.objects);
+    const groupId = generateId();
+    const objectIdSet = new Set(objectIds);
+    
+    const selectedObjects = state.objects.filter((o) => objectIdSet.has(o.id));
+    const parentIds = selectedObjects.map((o) => o.parentId);
+    const commonParent = parentIds.every((p) => p === parentIds[0]) ? parentIds[0] : null;
+    
+    const newGroup: SceneObject = {
+      id: groupId,
+      name: groupName,
+      type: "group",
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 },
+      material: { color: "#808080", opacity: 1, metalness: 0, roughness: 0.5 },
+      visible: true,
+      keyframes: [],
+      parentId: commonParent,
+      children: objectIds,
+    };
+    
+    const updatedObjects = state.objects.map((o) => {
+      if (objectIdSet.has(o.id)) {
+        const cleanedChildren = o.children.filter((c) => !objectIdSet.has(c));
+        return { ...o, parentId: groupId, children: cleanedChildren };
+      }
+      if (o.id === commonParent) {
+        const newChildren = o.children.filter((c) => !objectIdSet.has(c));
+        newChildren.push(groupId);
+        return { ...o, children: newChildren };
+      }
+      if (o.children.some((c) => objectIdSet.has(c))) {
+        return { ...o, children: o.children.filter((c) => !objectIdSet.has(c)) };
+      }
+      return o;
+    });
+    
+    set({
+      objects: [...updatedObjects, newGroup],
+      selectedObjectId: groupId,
+      isDirty: true,
+    });
+  },
+  
+  ungroupObject: (groupId) => {
+    const state = get();
+    const group = state.objects.find((o) => o.id === groupId);
+    if (!group || group.type !== "group") return;
+    
+    useHistoryStore.getState().pushState(state.objects, state.selectedObjectId);
+    
+    const updatedObjects = state.objects
+      .map((o) => {
+        if (o.parentId === groupId) {
+          return { ...o, parentId: group.parentId };
+        }
+        return o;
+      })
+      .filter((o) => o.id !== groupId);
+    
+    if (group.parentId) {
+      const parentIndex = updatedObjects.findIndex((o) => o.id === group.parentId);
+      if (parentIndex !== -1) {
+        updatedObjects[parentIndex] = {
+          ...updatedObjects[parentIndex],
+          children: [
+            ...updatedObjects[parentIndex].children.filter((c) => c !== groupId),
+            ...group.children,
+          ],
+        };
+      }
+    }
+    
+    set({
+      objects: updatedObjects,
+      selectedObjectId: null,
+      isDirty: true,
+    });
+  },
+  
+  setParent: (childId, parentId) => {
+    const state = get();
+    const child = state.objects.find((o) => o.id === childId);
+    if (!child) return;
+    
+    useHistoryStore.getState().pushState(state.objects, state.selectedObjectId);
+    
+    let updatedObjects = state.objects.map((o) => {
+      if (o.id === childId) {
+        return { ...o, parentId };
+      }
+      if (o.id === child.parentId && child.parentId !== null) {
+        return { ...o, children: o.children.filter((c) => c !== childId) };
+      }
+      if (o.id === parentId) {
+        return { ...o, children: [...o.children, childId] };
+      }
+      return o;
+    });
+    
+    set({
+      objects: updatedObjects,
+      isDirty: true,
+    });
+  },
+  
+  getChildren: (parentId) => {
+    return get().objects.filter((o) => o.parentId === parentId);
+  },
+  
+  getRootObjects: () => {
+    return get().objects.filter((o) => o.parentId === null);
   },
 }));

@@ -23,6 +23,8 @@ function SceneMesh({ object, isSelected }: { object: SceneObject; isSelected: bo
         return new THREE.ConeGeometry(0.5, 1, 32);
       case "torus":
         return new THREE.TorusGeometry(0.5, 0.2, 16, 32);
+      case "group":
+        return null;
       default:
         return new THREE.BoxGeometry(1, 1, 1);
     }
@@ -39,6 +41,7 @@ function SceneMesh({ object, isSelected }: { object: SceneObject; isSelected: bo
   }, [object.material]);
   
   if (!object.visible) return null;
+  if (!geometry) return null;
   
   const transformMode = activeTool === "select" ? undefined : activeTool;
   

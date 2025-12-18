@@ -30,7 +30,7 @@ export const keyframeSchema = z.object({
 export type Keyframe = z.infer<typeof keyframeSchema>;
 
 // 3D Object types
-export const objectTypeSchema = z.enum(["cube", "sphere", "cylinder", "plane", "cone", "torus"]);
+export const objectTypeSchema = z.enum(["cube", "sphere", "cylinder", "plane", "cone", "torus", "group"]);
 export type ObjectType = z.infer<typeof objectTypeSchema>;
 
 // Scene object schema
@@ -44,6 +44,8 @@ export const sceneObjectSchema = z.object({
   material: materialSchema,
   visible: z.boolean().default(true),
   keyframes: z.array(keyframeSchema).default([]),
+  parentId: z.string().nullable().default(null),
+  children: z.array(z.string()).default([]),
 });
 
 export type SceneObject = z.infer<typeof sceneObjectSchema>;
@@ -94,5 +96,7 @@ export function createDefaultSceneObject(type: ObjectType, name: string): Omit<S
     material: { ...defaultMaterial },
     visible: true,
     keyframes: [],
+    parentId: null,
+    children: [],
   };
 }
