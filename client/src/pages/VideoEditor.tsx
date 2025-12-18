@@ -19,6 +19,7 @@ import {
   PanelRightOpen,
   Box,
   Film,
+  Layers,
   Save,
   FolderOpen,
   Download,
@@ -109,7 +110,18 @@ export default function VideoEditor() {
               </Button>
             </Link>
           </TooltipTrigger>
-          <TooltipContent>Switch to 3D Editor</TooltipContent>
+          <TooltipContent>3D Editor</TooltipContent>
+        </Tooltip>
+        
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link href="/compositor">
+              <Button variant="ghost" size="icon" data-testid="switch-to-compositor">
+                <Layers className="h-4 w-4" />
+              </Button>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>Compositor</TooltipContent>
         </Tooltip>
         
         <div className="w-px h-5 bg-border" />

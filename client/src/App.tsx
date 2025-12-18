@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Editor from "@/pages/Editor";
 import VideoEditor from "@/pages/VideoEditor";
+import CompositorEditor from "@/pages/CompositorEditor";
 
 function Router() {
   return (
@@ -13,6 +14,7 @@ function Router() {
       <Route path="/" component={Editor} />
       <Route path="/3d" component={Editor} />
       <Route path="/video" component={VideoEditor} />
+      <Route path="/compositor" component={CompositorEditor} />
       <Route component={NotFound} />
     </Switch>
   );

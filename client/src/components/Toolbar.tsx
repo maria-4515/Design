@@ -354,6 +354,17 @@ export function Toolbar() {
         <TooltipContent side="bottom">Video Editor</TooltipContent>
       </Tooltip>
       
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link href="/compositor">
+            <Button variant="ghost" size="icon" data-testid="switch-to-compositor">
+              <Hexagon className="h-4 w-4" />
+            </Button>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Compositor</TooltipContent>
+      </Tooltip>
+      
       <Separator orientation="vertical" className="h-6 mx-1" />
       
       {/* Transform tools */}

@@ -514,3 +514,321 @@ export function createDefaultTracks(): Track[] {
 
 // Helper to generate unique IDs
 export const generateVideoId = () => `vid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+// ===== COMPOSITOR NODE EDITOR TYPES =====
+
+// Node types for the compositor
+export const compositorNodeTypeSchema = z.enum([
+  // Input nodes
+  "image", "render", "movieClip", "mask", "color",
+  // Output nodes
+  "composite", "viewer",
+  // Keying nodes
+  "chromaKey", "differenceKey", "luminanceKey", "keyingScreen",
+  // Matte nodes
+  "dilateErode", "blur", "despill", "channelKey",
+  // Color nodes
+  "colorCorrection", "curves", "levels", "colorBalance", "hueSaturation", "brightness",
+  // Mix nodes
+  "alphaOver", "mix", "multiply", "screen", "overlay",
+  // Transform nodes
+  "transform", "crop", "flip", "rotate",
+  // Filter nodes
+  "gaussianBlur", "directionalBlur", "sharpen", "denoise",
+  // Utility nodes
+  "rgb", "alpha", "setAlpha", "combine", "separate", "invert"
+]);
+export type CompositorNodeType = z.infer<typeof compositorNodeTypeSchema>;
+
+// Socket types for node connections
+export const socketTypeSchema = z.enum(["color", "alpha", "vector", "value"]);
+export type SocketType = z.infer<typeof socketTypeSchema>;
+
+// Node socket (input or output)
+export const nodeSocketSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: socketTypeSchema,
+  isInput: z.boolean(),
+  defaultValue: z.any().optional(),
+});
+
+export type NodeSocket = z.infer<typeof nodeSocketSchema>;
+
+// Node connection (link between sockets)
+export const nodeConnectionSchema = z.object({
+  id: z.string(),
+  fromNodeId: z.string(),
+  fromSocketId: z.string(),
+  toNodeId: z.string(),
+  toSocketId: z.string(),
+});
+
+export type NodeConnection = z.infer<typeof nodeConnectionSchema>;
+
+// Compositor node schema
+export const compositorNodeSchema = z.object({
+  id: z.string(),
+  type: compositorNodeTypeSchema,
+  name: z.string(),
+  position: z.object({ x: z.number(), y: z.number() }),
+  width: z.number().default(180),
+  collapsed: z.boolean().default(false),
+  inputs: z.array(nodeSocketSchema).default([]),
+  outputs: z.array(nodeSocketSchema).default([]),
+  // Node-specific parameters
+  parameters: z.record(z.string(), z.any()).default({}),
+  // Muted node (bypassed)
+  muted: z.boolean().default(false),
+  // For viewer nodes - whether to show as backdrop
+  useAsBackdrop: z.boolean().default(false),
+});
+
+export type CompositorNode = z.infer<typeof compositorNodeSchema>;
+
+// Compositor graph (node tree)
+export const compositorGraphSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  nodes: z.array(compositorNodeSchema).default([]),
+  connections: z.array(nodeConnectionSchema).default([]),
+  // Backdrop settings
+  backdropNodeId: z.string().nullable().default(null),
+  backdropZoom: z.number().min(0.1).max(4).default(1),
+  backdropOffset: z.object({ x: z.number(), y: z.number() }).default({ x: 0, y: 0 }),
+  // View settings
+  viewOffset: z.object({ x: z.number(), y: z.number() }).default({ x: 0, y: 0 }),
+  viewZoom: z.number().min(0.1).max(4).default(1),
+});
+
+export type CompositorGraph = z.infer<typeof compositorGraphSchema>;
+
+// Node parameter definitions for UI generation
+export interface NodeParameterDef {
+  name: string;
+  label: string;
+  type: "number" | "color" | "boolean" | "enum" | "vector2" | "vector3";
+  default: any;
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: { value: string; label: string }[];
+}
+
+// Node definitions with sockets and parameters
+export interface CompositorNodeDefinition {
+  type: CompositorNodeType;
+  label: string;
+  category: "input" | "output" | "keying" | "matte" | "color" | "mix" | "transform" | "filter" | "utility";
+  inputs: Omit<NodeSocket, "id">[];
+  outputs: Omit<NodeSocket, "id">[];
+  parameters: NodeParameterDef[];
+}
+
+// Node library definitions
+export const compositorNodeDefinitions: CompositorNodeDefinition[] = [
+  // Input nodes
+  { type: "image", label: "Image", category: "input",
+    inputs: [],
+    outputs: [{ name: "Image", type: "color", isInput: false }, { name: "Alpha", type: "alpha", isInput: false }],
+    parameters: [{ name: "source", label: "Source", type: "enum", default: "generated", options: [{ value: "generated", label: "Generated" }, { value: "file", label: "File" }] }]
+  },
+  { type: "render", label: "Render Layers", category: "input",
+    inputs: [],
+    outputs: [{ name: "Image", type: "color", isInput: false }, { name: "Alpha", type: "alpha", isInput: false }, { name: "Depth", type: "value", isInput: false }],
+    parameters: []
+  },
+  { type: "color", label: "Color", category: "input",
+    inputs: [],
+    outputs: [{ name: "Color", type: "color", isInput: false }],
+    parameters: [{ name: "color", label: "Color", type: "color", default: "#808080" }]
+  },
+  
+  // Output nodes
+  { type: "composite", label: "Composite", category: "output",
+    inputs: [{ name: "Image", type: "color", isInput: true }, { name: "Alpha", type: "alpha", isInput: true }],
+    outputs: [],
+    parameters: [{ name: "useAlpha", label: "Use Alpha", type: "boolean", default: true }]
+  },
+  { type: "viewer", label: "Viewer", category: "output",
+    inputs: [{ name: "Image", type: "color", isInput: true }, { name: "Alpha", type: "alpha", isInput: true }],
+    outputs: [],
+    parameters: [{ name: "useAlpha", label: "Use Alpha", type: "boolean", default: true }]
+  },
+  
+  // Keying nodes
+  { type: "chromaKey", label: "Chroma Key", category: "keying",
+    inputs: [{ name: "Image", type: "color", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }, { name: "Matte", type: "alpha", isInput: false }],
+    parameters: [
+      { name: "keyColor", label: "Key Color", type: "color", default: "#00ff00" },
+      { name: "tolerance", label: "Tolerance", type: "number", default: 0.4, min: 0, max: 1, step: 0.01 },
+      { name: "softness", label: "Edge Softness", type: "number", default: 0.1, min: 0, max: 1, step: 0.01 },
+      { name: "spillSuppress", label: "Spill Suppress", type: "number", default: 0.5, min: 0, max: 1, step: 0.01 },
+    ]
+  },
+  { type: "luminanceKey", label: "Luminance Key", category: "keying",
+    inputs: [{ name: "Image", type: "color", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }, { name: "Matte", type: "alpha", isInput: false }],
+    parameters: [
+      { name: "lowThreshold", label: "Low", type: "number", default: 0, min: 0, max: 1, step: 0.01 },
+      { name: "highThreshold", label: "High", type: "number", default: 1, min: 0, max: 1, step: 0.01 },
+    ]
+  },
+  { type: "differenceKey", label: "Difference Key", category: "keying",
+    inputs: [{ name: "Image", type: "color", isInput: true }, { name: "Clean Plate", type: "color", isInput: true }],
+    outputs: [{ name: "Matte", type: "alpha", isInput: false }],
+    parameters: [{ name: "threshold", label: "Threshold", type: "number", default: 0.1, min: 0, max: 1, step: 0.01 }]
+  },
+  
+  // Matte cleanup nodes
+  { type: "dilateErode", label: "Dilate/Erode", category: "matte",
+    inputs: [{ name: "Mask", type: "alpha", isInput: true }],
+    outputs: [{ name: "Mask", type: "alpha", isInput: false }],
+    parameters: [{ name: "distance", label: "Distance", type: "number", default: 0, min: -100, max: 100, step: 1 }]
+  },
+  { type: "blur", label: "Blur", category: "matte",
+    inputs: [{ name: "Image", type: "color", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }],
+    parameters: [
+      { name: "sizeX", label: "Size X", type: "number", default: 10, min: 0, max: 256, step: 1 },
+      { name: "sizeY", label: "Size Y", type: "number", default: 10, min: 0, max: 256, step: 1 },
+    ]
+  },
+  { type: "despill", label: "Despill", category: "matte",
+    inputs: [{ name: "Image", type: "color", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }],
+    parameters: [
+      { name: "factor", label: "Factor", type: "number", default: 1, min: 0, max: 2, step: 0.01 },
+      { name: "keyColor", label: "Key Color", type: "color", default: "#00ff00" },
+    ]
+  },
+  
+  // Color correction nodes
+  { type: "colorCorrection", label: "Color Correction", category: "color",
+    inputs: [{ name: "Image", type: "color", isInput: true }, { name: "Mask", type: "alpha", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }],
+    parameters: [
+      { name: "saturation", label: "Saturation", type: "number", default: 1, min: 0, max: 4, step: 0.01 },
+      { name: "contrast", label: "Contrast", type: "number", default: 1, min: 0, max: 4, step: 0.01 },
+      { name: "gamma", label: "Gamma", type: "number", default: 1, min: 0.1, max: 4, step: 0.01 },
+      { name: "gain", label: "Gain", type: "number", default: 1, min: 0, max: 4, step: 0.01 },
+      { name: "lift", label: "Lift", type: "number", default: 0, min: -1, max: 1, step: 0.01 },
+    ]
+  },
+  { type: "curves", label: "Curves", category: "color",
+    inputs: [{ name: "Image", type: "color", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }],
+    parameters: [{ name: "channel", label: "Channel", type: "enum", default: "rgb", options: [
+      { value: "rgb", label: "RGB" }, { value: "r", label: "Red" }, { value: "g", label: "Green" }, { value: "b", label: "Blue" }
+    ]}]
+  },
+  { type: "levels", label: "Levels", category: "color",
+    inputs: [{ name: "Image", type: "color", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }],
+    parameters: [
+      { name: "inBlack", label: "Input Black", type: "number", default: 0, min: 0, max: 1, step: 0.01 },
+      { name: "inWhite", label: "Input White", type: "number", default: 1, min: 0, max: 1, step: 0.01 },
+      { name: "gamma", label: "Gamma", type: "number", default: 1, min: 0.1, max: 4, step: 0.01 },
+      { name: "outBlack", label: "Output Black", type: "number", default: 0, min: 0, max: 1, step: 0.01 },
+      { name: "outWhite", label: "Output White", type: "number", default: 1, min: 0, max: 1, step: 0.01 },
+    ]
+  },
+  { type: "hueSaturation", label: "Hue/Saturation", category: "color",
+    inputs: [{ name: "Image", type: "color", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }],
+    parameters: [
+      { name: "hue", label: "Hue", type: "number", default: 0, min: -180, max: 180, step: 1 },
+      { name: "saturation", label: "Saturation", type: "number", default: 1, min: 0, max: 2, step: 0.01 },
+      { name: "value", label: "Value", type: "number", default: 1, min: 0, max: 2, step: 0.01 },
+    ]
+  },
+  
+  // Mix/blend nodes
+  { type: "alphaOver", label: "Alpha Over", category: "mix",
+    inputs: [{ name: "Image", type: "color", isInput: true }, { name: "Foreground", type: "color", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }],
+    parameters: [
+      { name: "premultiply", label: "Premultiply", type: "boolean", default: false },
+      { name: "factor", label: "Factor", type: "number", default: 1, min: 0, max: 1, step: 0.01 },
+    ]
+  },
+  { type: "mix", label: "Mix", category: "mix",
+    inputs: [{ name: "Image 1", type: "color", isInput: true }, { name: "Image 2", type: "color", isInput: true }, { name: "Factor", type: "value", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }],
+    parameters: [
+      { name: "factor", label: "Factor", type: "number", default: 0.5, min: 0, max: 1, step: 0.01 },
+      { name: "blendMode", label: "Blend Mode", type: "enum", default: "mix", options: [
+        { value: "mix", label: "Mix" }, { value: "add", label: "Add" }, { value: "multiply", label: "Multiply" },
+        { value: "screen", label: "Screen" }, { value: "overlay", label: "Overlay" }
+      ]}
+    ]
+  },
+  
+  // Transform nodes
+  { type: "transform", label: "Transform", category: "transform",
+    inputs: [{ name: "Image", type: "color", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }],
+    parameters: [
+      { name: "x", label: "X", type: "number", default: 0, min: -1000, max: 1000, step: 1 },
+      { name: "y", label: "Y", type: "number", default: 0, min: -1000, max: 1000, step: 1 },
+      { name: "rotation", label: "Rotation", type: "number", default: 0, min: -180, max: 180, step: 1 },
+      { name: "scaleX", label: "Scale X", type: "number", default: 1, min: 0, max: 4, step: 0.01 },
+      { name: "scaleY", label: "Scale Y", type: "number", default: 1, min: 0, max: 4, step: 0.01 },
+    ]
+  },
+  
+  // Utility nodes
+  { type: "setAlpha", label: "Set Alpha", category: "utility",
+    inputs: [{ name: "Image", type: "color", isInput: true }, { name: "Alpha", type: "alpha", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }],
+    parameters: []
+  },
+  { type: "invert", label: "Invert", category: "utility",
+    inputs: [{ name: "Image", type: "color", isInput: true }],
+    outputs: [{ name: "Image", type: "color", isInput: false }],
+    parameters: [{ name: "channel", label: "Channel", type: "enum", default: "all", options: [
+      { value: "all", label: "All" }, { value: "rgb", label: "RGB" }, { value: "alpha", label: "Alpha" }
+    ]}]
+  },
+];
+
+// Helper to create a node with default values
+export function createCompositorNode(type: CompositorNodeType, position: { x: number; y: number }): CompositorNode {
+  const def = compositorNodeDefinitions.find(d => d.type === type);
+  if (!def) throw new Error(`Unknown node type: ${type}`);
+  
+  const id = `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  const inputs = def.inputs.map((input, i) => ({
+    ...input,
+    id: `${id}_in_${i}`,
+  }));
+  
+  const outputs = def.outputs.map((output, i) => ({
+    ...output,
+    id: `${id}_out_${i}`,
+  }));
+  
+  const parameters: Record<string, any> = {};
+  def.parameters.forEach(p => {
+    parameters[p.name] = p.default;
+  });
+  
+  return {
+    id,
+    type,
+    name: def.label,
+    position,
+    width: 180,
+    collapsed: false,
+    inputs,
+    outputs,
+    parameters,
+    muted: false,
+    useAsBackdrop: false,
+  };
+}
+
+export const generateNodeId = () => `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export const generateConnectionId = () => `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
