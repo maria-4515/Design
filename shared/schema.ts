@@ -204,3 +204,313 @@ export function createDefaultSceneObject(type: ObjectType, name: string): Omit<S
   
   return baseObject;
 }
+
+// ===== VIDEO EDITOR TYPES =====
+
+// Media asset types
+export const mediaTypeSchema = z.enum(["video", "audio", "image", "scene"]);
+export type MediaType = z.infer<typeof mediaTypeSchema>;
+
+// Track types for the 32-track timeline
+export const trackTypeSchema = z.enum(["video", "audio", "image", "scene", "mask", "effect", "adjustment"]);
+export type TrackType = z.infer<typeof trackTypeSchema>;
+
+// Media asset schema (imported files)
+export const mediaAssetSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: mediaTypeSchema,
+  url: z.string(),
+  duration: z.number().min(0).default(0), // in seconds
+  width: z.number().int().optional(),
+  height: z.number().int().optional(),
+  sampleRate: z.number().int().optional(), // for audio
+  channels: z.number().int().optional(), // for audio
+  thumbnail: z.string().optional(),
+});
+
+export type MediaAsset = z.infer<typeof mediaAssetSchema>;
+
+// Effect types
+export const effectTypeSchema = z.enum([
+  "brightness", "contrast", "saturation", "hue", "blur", "sharpen",
+  "vignette", "sepia", "grayscale", "invert", "chromaKey",
+  "colorBalance", "curves", "levels", "exposure", "temperature"
+]);
+export type EffectType = z.infer<typeof effectTypeSchema>;
+
+// Effect keyframe for animated effects
+export const effectKeyframeSchema = z.object({
+  time: z.number().min(0), // time in seconds
+  value: z.number(),
+});
+
+export type EffectKeyframe = z.infer<typeof effectKeyframeSchema>;
+
+// Effect schema
+export const effectSchema = z.object({
+  id: z.string(),
+  type: effectTypeSchema,
+  enabled: z.boolean().default(true),
+  value: z.number().default(0), // current value
+  min: z.number().default(-100),
+  max: z.number().default(100),
+  keyframes: z.array(effectKeyframeSchema).default([]),
+});
+
+export type Effect = z.infer<typeof effectSchema>;
+
+// Transition types
+export const transitionTypeSchema = z.enum([
+  "none", "fade", "dissolve", "wipe", "slide", "zoom", "push", "iris"
+]);
+export type TransitionType = z.infer<typeof transitionTypeSchema>;
+
+// Transition schema
+export const transitionSchema = z.object({
+  type: transitionTypeSchema.default("none"),
+  duration: z.number().min(0).default(0.5), // in seconds
+  easing: z.enum(["linear", "easeIn", "easeOut", "easeInOut"]).default("easeInOut"),
+});
+
+export type Transition = z.infer<typeof transitionSchema>;
+
+// Clip schema (an instance of media on a track)
+export const clipSchema = z.object({
+  id: z.string(),
+  trackId: z.string(),
+  assetId: z.string().nullable(), // null for adjustment layers
+  name: z.string(),
+  startTime: z.number().min(0), // start position on timeline in seconds
+  duration: z.number().min(0.01), // clip duration in seconds
+  inPoint: z.number().min(0).default(0), // trim start in source media
+  outPoint: z.number().min(0).optional(), // trim end in source media
+  speed: z.number().min(0.1).max(10).default(1), // playback speed multiplier
+  volume: z.number().min(0).max(2).default(1), // audio volume
+  opacity: z.number().min(0).max(1).default(1), // visual opacity
+  muted: z.boolean().default(false),
+  locked: z.boolean().default(false),
+  effects: z.array(effectSchema).default([]),
+  transitionIn: transitionSchema.optional(),
+  transitionOut: transitionSchema.optional(),
+  // Transform properties for video/image
+  position: vector3Schema.optional(), // x, y for 2D, z for depth
+  scale: z.object({ x: z.number(), y: z.number() }).optional(),
+  rotation: z.number().optional(), // 2D rotation in degrees
+});
+
+export type Clip = z.infer<typeof clipSchema>;
+
+// Track schema
+export const trackSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: trackTypeSchema,
+  index: z.number().int().min(0).max(31), // 0-31 for 32 tracks
+  height: z.number().int().default(48), // track height in pixels
+  visible: z.boolean().default(true),
+  locked: z.boolean().default(false),
+  muted: z.boolean().default(false),
+  solo: z.boolean().default(false),
+  volume: z.number().min(0).max(2).default(1), // master volume for audio tracks
+  clips: z.array(z.string()).default([]), // clip IDs on this track
+});
+
+export type Track = z.infer<typeof trackSchema>;
+
+// Adjustment layer schema (special clips that affect layers below)
+export const adjustmentLayerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  trackId: z.string(),
+  startTime: z.number().min(0),
+  duration: z.number().min(0.01),
+  effects: z.array(effectSchema).default([]),
+  blendMode: z.enum(["normal", "multiply", "screen", "overlay", "softLight"]).default("normal"),
+  opacity: z.number().min(0).max(1).default(1),
+});
+
+export type AdjustmentLayer = z.infer<typeof adjustmentLayerSchema>;
+
+// Audio mixer channel
+export const audioChannelSchema = z.object({
+  trackId: z.string(),
+  volume: z.number().min(0).max(2).default(1),
+  pan: z.number().min(-1).max(1).default(0), // -1 = left, 0 = center, 1 = right
+  muted: z.boolean().default(false),
+  solo: z.boolean().default(false),
+});
+
+export type AudioChannel = z.infer<typeof audioChannelSchema>;
+
+// Video project schema (combines 3D scene + video timeline)
+export const videoProjectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  // Timeline settings
+  duration: z.number().min(0).default(60), // project duration in seconds
+  fps: z.number().int().min(1).max(120).default(30),
+  width: z.number().int().default(1920),
+  height: z.number().int().default(1080),
+  // Media assets library
+  assets: z.array(mediaAssetSchema).default([]),
+  // Tracks (up to 32)
+  tracks: z.array(trackSchema).default([]),
+  // Clips
+  clips: z.array(clipSchema).default([]),
+  // Audio mixer settings
+  masterVolume: z.number().min(0).max(2).default(1),
+  audioChannels: z.array(audioChannelSchema).default([]),
+});
+
+export type VideoProject = z.infer<typeof videoProjectSchema>;
+
+// Effect presets
+export interface EffectPreset {
+  id: string;
+  name: string;
+  category: string;
+  effects: Omit<Effect, "id">[];
+}
+
+export const effectPresets: EffectPreset[] = [
+  { id: "vintage", name: "Vintage Film", category: "Color", effects: [
+    { type: "sepia", enabled: true, value: 30, min: 0, max: 100, keyframes: [] },
+    { type: "contrast", enabled: true, value: 10, min: -100, max: 100, keyframes: [] },
+    { type: "vignette", enabled: true, value: 40, min: 0, max: 100, keyframes: [] },
+  ]},
+  { id: "noir", name: "Film Noir", category: "Color", effects: [
+    { type: "grayscale", enabled: true, value: 100, min: 0, max: 100, keyframes: [] },
+    { type: "contrast", enabled: true, value: 30, min: -100, max: 100, keyframes: [] },
+  ]},
+  { id: "vibrant", name: "Vibrant", category: "Color", effects: [
+    { type: "saturation", enabled: true, value: 40, min: -100, max: 100, keyframes: [] },
+    { type: "contrast", enabled: true, value: 15, min: -100, max: 100, keyframes: [] },
+  ]},
+  { id: "cold", name: "Cold Tone", category: "Color", effects: [
+    { type: "temperature", enabled: true, value: -30, min: -100, max: 100, keyframes: [] },
+  ]},
+  { id: "warm", name: "Warm Tone", category: "Color", effects: [
+    { type: "temperature", enabled: true, value: 30, min: -100, max: 100, keyframes: [] },
+  ]},
+  { id: "dreamy", name: "Dreamy", category: "Stylize", effects: [
+    { type: "blur", enabled: true, value: 10, min: 0, max: 100, keyframes: [] },
+    { type: "brightness", enabled: true, value: 15, min: -100, max: 100, keyframes: [] },
+  ]},
+  { id: "sharp", name: "Sharp", category: "Stylize", effects: [
+    { type: "sharpen", enabled: true, value: 50, min: 0, max: 100, keyframes: [] },
+    { type: "contrast", enabled: true, value: 10, min: -100, max: 100, keyframes: [] },
+  ]},
+];
+
+// Default track configuration (8 video, 8 audio, etc.)
+export function createDefaultTracks(): Track[] {
+  const tracks: Track[] = [];
+  
+  // 8 video tracks (top)
+  for (let i = 0; i < 8; i++) {
+    tracks.push({
+      id: `track_video_${i}`,
+      name: `Video ${i + 1}`,
+      type: "video",
+      index: i,
+      height: 48,
+      visible: true,
+      locked: false,
+      muted: false,
+      solo: false,
+      volume: 1,
+      clips: [],
+    });
+  }
+  
+  // 4 image tracks
+  for (let i = 0; i < 4; i++) {
+    tracks.push({
+      id: `track_image_${i}`,
+      name: `Image ${i + 1}`,
+      type: "image",
+      index: 8 + i,
+      height: 48,
+      visible: true,
+      locked: false,
+      muted: false,
+      solo: false,
+      volume: 1,
+      clips: [],
+    });
+  }
+  
+  // 4 scene tracks (for 3D scenes)
+  for (let i = 0; i < 4; i++) {
+    tracks.push({
+      id: `track_scene_${i}`,
+      name: `Scene ${i + 1}`,
+      type: "scene",
+      index: 12 + i,
+      height: 48,
+      visible: true,
+      locked: false,
+      muted: false,
+      solo: false,
+      volume: 1,
+      clips: [],
+    });
+  }
+  
+  // 4 effect/adjustment tracks
+  for (let i = 0; i < 4; i++) {
+    tracks.push({
+      id: `track_effect_${i}`,
+      name: `Adjustment ${i + 1}`,
+      type: "adjustment",
+      index: 16 + i,
+      height: 48,
+      visible: true,
+      locked: false,
+      muted: false,
+      solo: false,
+      volume: 1,
+      clips: [],
+    });
+  }
+  
+  // 4 mask tracks
+  for (let i = 0; i < 4; i++) {
+    tracks.push({
+      id: `track_mask_${i}`,
+      name: `Mask ${i + 1}`,
+      type: "mask",
+      index: 20 + i,
+      height: 48,
+      visible: true,
+      locked: false,
+      muted: false,
+      solo: false,
+      volume: 1,
+      clips: [],
+    });
+  }
+  
+  // 8 audio tracks (bottom)
+  for (let i = 0; i < 8; i++) {
+    tracks.push({
+      id: `track_audio_${i}`,
+      name: `Audio ${i + 1}`,
+      type: "audio",
+      index: 24 + i,
+      height: 48,
+      visible: true,
+      locked: false,
+      muted: false,
+      solo: false,
+      volume: 1,
+      clips: [],
+    });
+  }
+  
+  return tracks;
+}
+
+// Helper to generate unique IDs
+export const generateVideoId = () => `vid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

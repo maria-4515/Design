@@ -50,8 +50,10 @@ import {
   Hexagon,
   GitCommitHorizontal,
   Grid3x3,
+  Film,
 } from "lucide-react";
 import { useHistoryStore } from "@/lib/history";
+import { Link } from "wouter";
 
 const toolItems: { id: ToolType; icon: typeof MousePointer2; label: string; shortcut: string }[] = [
   { id: "select", icon: MousePointer2, label: "Select", shortcut: "Q" },
@@ -337,6 +339,20 @@ export function Toolbar() {
           {sceneName}{isDirty ? " *" : ""}
         </span>
       </div>
+      
+      <Separator orientation="vertical" className="h-6 mx-1" />
+      
+      {/* Mode switcher */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link href="/video">
+            <Button variant="ghost" size="icon" data-testid="switch-to-video">
+              <Film className="h-4 w-4" />
+            </Button>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Video Editor</TooltipContent>
+      </Tooltip>
       
       <Separator orientation="vertical" className="h-6 mx-1" />
       
