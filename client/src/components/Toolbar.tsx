@@ -51,6 +51,7 @@ import {
   GitCommitHorizontal,
   Grid3x3,
   Film,
+  User,
 } from "lucide-react";
 import { useHistoryStore } from "@/lib/history";
 import { Link } from "wouter";
@@ -363,6 +364,17 @@ export function Toolbar() {
           </Link>
         </TooltipTrigger>
         <TooltipContent side="bottom">Compositor</TooltipContent>
+      </Tooltip>
+      
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link href="/character">
+            <Button variant="ghost" size="icon" data-testid="switch-to-character">
+              <User className="h-4 w-4" />
+            </Button>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Character Animation</TooltipContent>
       </Tooltip>
       
       <Separator orientation="vertical" className="h-6 mx-1" />

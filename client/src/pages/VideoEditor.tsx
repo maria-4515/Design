@@ -26,6 +26,7 @@ import {
   Settings,
   Undo2,
   Redo2,
+  User,
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -122,6 +123,17 @@ export default function VideoEditor() {
             </Link>
           </TooltipTrigger>
           <TooltipContent>Compositor</TooltipContent>
+        </Tooltip>
+        
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link href="/character">
+              <Button variant="ghost" size="icon" data-testid="switch-to-character">
+                <User className="h-4 w-4" />
+              </Button>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>Character Animation</TooltipContent>
         </Tooltip>
         
         <div className="w-px h-5 bg-border" />

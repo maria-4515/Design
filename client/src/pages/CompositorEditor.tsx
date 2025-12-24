@@ -17,6 +17,7 @@ import {
   Redo2,
   Play,
   RefreshCw,
+  User,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useCompositorStore } from "@/lib/compositorStore";
@@ -66,6 +67,17 @@ export default function CompositorEditor() {
             </Link>
           </TooltipTrigger>
           <TooltipContent>Video Editor</TooltipContent>
+        </Tooltip>
+        
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link href="/character">
+              <Button variant="ghost" size="icon" data-testid="switch-to-character">
+                <User className="h-4 w-4" />
+              </Button>
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>Character Animation</TooltipContent>
         </Tooltip>
         
         <div className="w-px h-5 bg-border" />
