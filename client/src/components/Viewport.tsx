@@ -3,7 +3,7 @@ import { OrbitControls, Grid, GizmoHelper, GizmoViewport, TransformControls, Per
 import { useEditorStore } from "@/lib/store";
 import { useRef, useMemo, useEffect } from "react";
 import * as THREE from "three";
-import type { SceneObject, CameraKeyframe, Vector3 } from "@shared/schema";
+import type { SceneObject, CameraKeyframe, Vector3, Keyframe } from "@shared/schema";
 import { isLightType } from "@shared/schema";
 
 function lerp(a: number, b: number, t: number): number {
@@ -46,6 +46,49 @@ function interpolateCameraKeyframes(keyframes: CameraKeyframe[], frame: number, 
   }
   
   return { position: defaultPos, target: defaultTarget, fov: defaultFov };
+}
+
+function interpolateObjectKeyframes(
+  keyframes: Keyframe[],
+  frame: number,
+  defaultPos: Vector3,
+  defaultRot: Vector3,
+  defaultScale: Vector3
+): { position: Vector3; rotation: Vector3; scale: Vector3 } {
+  if (keyframes.length === 0) {
+    return { position: defaultPos, rotation: defaultRot, scale: defaultScale };
+  }
+  
+  const sorted = [...keyframes].sort((a, b) => a.frame - b.frame);
+  
+  const getTransform = (kf: Keyframe) => ({
+    position: kf.position || defaultPos,
+    rotation: kf.rotation || defaultRot,
+    scale: kf.scale || defaultScale,
+  });
+  
+  if (frame <= sorted[0].frame) {
+    return getTransform(sorted[0]);
+  }
+  
+  if (frame >= sorted[sorted.length - 1].frame) {
+    return getTransform(sorted[sorted.length - 1]);
+  }
+  
+  for (let i = 0; i < sorted.length - 1; i++) {
+    if (frame >= sorted[i].frame && frame <= sorted[i + 1].frame) {
+      const t = (frame - sorted[i].frame) / (sorted[i + 1].frame - sorted[i].frame);
+      const from = getTransform(sorted[i]);
+      const to = getTransform(sorted[i + 1]);
+      return {
+        position: lerpVector3(from.position, to.position, t),
+        rotation: lerpVector3(from.rotation, to.rotation, t),
+        scale: lerpVector3(from.scale, to.scale, t),
+      };
+    }
+  }
+  
+  return { position: defaultPos, rotation: defaultRot, scale: defaultScale };
 }
 
 function CameraController() {
@@ -175,7 +218,7 @@ function VertexPoints({
 
 function SceneMesh({ object, isSelected }: { object: SceneObject; isSelected: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const { activeTool, setPosition, setRotation, setScale, editMode } = useEditorStore();
+  const { activeTool, setPosition, setRotation, setScale, editMode, isPlaying, currentFrame } = useEditorStore();
   
   const geometry = useMemo(() => {
     switch (object.type) {
@@ -212,19 +255,33 @@ function SceneMesh({ object, isSelected }: { object: SceneObject; isSelected: bo
     });
   }, [object.material]);
   
+  // Interpolate transform from keyframes during playback
+  const animatedTransform = useMemo(() => {
+    if (isPlaying && object.keyframes && object.keyframes.length > 0) {
+      return interpolateObjectKeyframes(
+        object.keyframes,
+        currentFrame,
+        object.position,
+        object.rotation,
+        object.scale
+      );
+    }
+    return { position: object.position, rotation: object.rotation, scale: object.scale };
+  }, [isPlaying, currentFrame, object.keyframes, object.position, object.rotation, object.scale]);
+  
   if (!object.visible) return null;
   if (!geometry) return null;
   
   const transformMode = activeTool === "select" ? undefined : activeTool;
   const showVertices = editMode === "vertex" && isSelected;
   
-  const positionTuple: [number, number, number] = [object.position.x, object.position.y, object.position.z];
+  const positionTuple: [number, number, number] = [animatedTransform.position.x, animatedTransform.position.y, animatedTransform.position.z];
   const rotationTuple: [number, number, number] = [
-    THREE.MathUtils.degToRad(object.rotation.x),
-    THREE.MathUtils.degToRad(object.rotation.y),
-    THREE.MathUtils.degToRad(object.rotation.z),
+    THREE.MathUtils.degToRad(animatedTransform.rotation.x),
+    THREE.MathUtils.degToRad(animatedTransform.rotation.y),
+    THREE.MathUtils.degToRad(animatedTransform.rotation.z),
   ];
-  const scaleTuple: [number, number, number] = [object.scale.x, object.scale.y, object.scale.z];
+  const scaleTuple: [number, number, number] = [animatedTransform.scale.x, animatedTransform.scale.y, animatedTransform.scale.z];
   
   return (
     <>
