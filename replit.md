@@ -32,6 +32,8 @@ A web-based creative suite built with React, Three.js, and Express. Features fou
 ### Video Editor
 - **Live Preview**: Real-time video playback with transport controls
 - **32-Track Timeline**: Support for video, audio, image, 3D scene, mask, and adjustment tracks
+- **Drag-and-Drop Import**: Drop videos, images, and audio files directly onto the editor
+- **Welcome Experience**: First-time user onboarding with helpful tips
 - **Media Library**: Import and organize video, audio, and image assets
 - **Audio Mixer**: Per-track volume, pan, mute, solo controls with master output
 - **Video Scopes**: Luma waveform, chroma vectorscope, RGB histogram displays
@@ -40,6 +42,7 @@ A web-based creative suite built with React, Three.js, and Express. Features fou
 - **Effect Presets**: Pre-configured effect combinations (Vintage, Noir, Vibrant, etc.)
 - **Transitions**: Fade, dissolve, wipe, slide, zoom, push, iris transitions
 - **Keyframe Animation**: Animate effect parameters over time
+- **Keyboard Shortcuts Dialog**: Quick reference for all shortcuts
 
 ### Compositor Node Editor
 - **Visual Node Graph**: Canvas-based node editor with panning, zooming, and bezier curve connections
@@ -53,6 +56,7 @@ A web-based creative suite built with React, Three.js, and Express. Features fou
 - **Node Properties**: Parameter editing panel with sliders, color pickers, and options
 
 ### Character Animation
+- **Welcome Panel**: First-time user guide with quick skeleton creation
 - **Skeleton System**: Bone hierarchy with parent/child relationships
 - **Pose Editor**: Bone selection and rotation controls with pose library
 - **Humanoid Preset**: Pre-configured 20-bone skeleton (spine, arms, legs, head)
@@ -60,6 +64,8 @@ A web-based creative suite built with React, Three.js, and Express. Features fou
 - **Action Editor**: Create reusable animation clips with bone keyframes
 - **NLA Editor**: Non-linear animation with strips, blending, and layering
 - **Audio Sync**: Audio tracks with waveform visualization and sync markers
+- **Getting Started Tips**: Step-by-step guidance for new users
+- **Keyboard Shortcuts Dialog**: Quick reference for animation shortcuts
 
 ## Project Architecture
 
