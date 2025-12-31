@@ -1,9 +1,19 @@
 # 3D Studio - Modeling, Animation, Video Editing & Compositing Tool
 
 ## Overview
-A web-based creative suite built with React, Three.js, and Express. Features three integrated editors: 3D modeling with primitives and animation, professional video editing with multi-track timeline, and a node-based compositor for visual effects and compositing.
+A web-based creative suite built with React, Three.js, and Express. Features four integrated editors: 3D modeling with primitives and animation, professional video editing with multi-track timeline, a node-based compositor for visual effects and compositing, and character animation with skeletal rigging.
+
+**AI-Powered Features**: Unique AI capabilities not found in traditional tools like Canva or Blender - including text-to-3D scene generation, AI material suggestions, animation recommendations, and an intelligent chat assistant.
 
 ## Features
+
+### AI Assistant (Unique Features)
+- **Text-to-Scene Generation**: Describe a scene in natural language and AI generates 3D objects with positions, materials, and lighting
+- **Material Suggestions**: AI recommends 5 different material options based on object context (metallic, matte, transparent, etc.)
+- **Animation Suggestions**: Get AI-powered animation recommendations for any object with ready-to-apply keyframes
+- **Scene Enhancement**: Add complementary objects and lighting to existing scenes via AI
+- **Chat Assistant**: Conversational AI that understands your scene context and provides guidance
+- **Texture Prompt Generation**: AI creates optimized prompts for seamless texture generation
 
 ### 3D Editor
 - **3D Viewport**: Interactive canvas with orbit controls, grid, and axis helpers
@@ -54,14 +64,17 @@ A web-based creative suite built with React, Three.js, and Express. Features thr
 ## Project Architecture
 
 ### Frontend (`client/src/`)
-- `App.tsx` - Main application with routing (3D, Video, and Compositor editors)
-- `pages/Editor.tsx` - 3D editor layout with panels and keyboard shortcuts
+- `App.tsx` - Main application with routing (3D, Video, Compositor, Character editors)
+- `pages/Editor.tsx` - 3D editor layout with panels, keyboard shortcuts, and AI panel
 - `pages/VideoEditor.tsx` - Video editor layout with timeline and scopes
+- `pages/CompositorEditor.tsx` - Compositor editor layout
+- `pages/CharacterAnimEditor.tsx` - Character animation editor layout
 - `components/Viewport.tsx` - Three.js 3D viewport using React Three Fiber
 - `components/Toolbar.tsx` - Top toolbar with tools, edit modes, and actions
 - `components/HierarchyPanel.tsx` - Scene object tree with camera selection
 - `components/PropertiesPanel.tsx` - Object properties, materials, lights, and camera controls
 - `components/Timeline.tsx` - 3D animation timeline with keyframes
+- `components/AIPanel.tsx` - AI assistant with scene generation, materials, animations, and chat
 - `components/VideoTimeline.tsx` - Video editor 32-track timeline
 - `components/VideoPreview.tsx` - Video preview with playback controls
 - `components/AudioMixer.tsx` - Audio mixing console with waveforms
@@ -70,27 +83,33 @@ A web-based creative suite built with React, Three.js, and Express. Features thr
 - `components/ClipProperties.tsx` - Clip editing (speed, effects, transitions)
 - `components/SceneManager.tsx` - Scene saving and loading
 - `components/NodeEditor.tsx` - Visual node graph editor for compositing
-- `pages/CompositorEditor.tsx` - Compositor editor layout
+- `components/PoseEditor.tsx` - Bone hierarchy and pose controls
+- `components/NlaEditor.tsx` - NLA timeline with strips and audio
 - `lib/store.ts` - Zustand state management for 3D editor
 - `lib/videoStore.ts` - Zustand state management for video editor
 - `lib/compositorStore.ts` - Zustand state management for compositor
 - `lib/characterAnimStore.ts` - Zustand state management for character animation
-- `components/PoseEditor.tsx` - Bone hierarchy and pose controls
-- `components/NlaEditor.tsx` - NLA timeline with strips and audio
-- `pages/CharacterAnimEditor.tsx` - Character animation editor layout
+- `lib/performance.ts` - Performance utilities (debounce, throttle, object pooling, memoization)
 - `lib/history.ts` - History stack management for undo/redo
 - `lib/export.ts` - GLTF/GLB export functionality
 
 ### Backend (`server/`)
-- `routes.ts` - API endpoints for scene CRUD operations
+- `routes.ts` - API endpoints for scene CRUD and AI operations
 - `storage.ts` - In-memory storage for scenes
+- `ai/sceneAI.ts` - AI service for scene generation, material/animation suggestions, chat
+
+### AI Integration (`server/replit_integrations/`)
+- `chat/` - Chat storage and conversation management
+- `image/` - Image generation via OpenAI gpt-image-1
+- `batch/` - Batch processing utilities with rate limiting
 
 ### Shared (`shared/`)
-- `schema.ts` - TypeScript types and Zod schemas for 3D objects, scenes, materials, lights, camera, video timeline, clips, tracks, effects, compositor nodes and connections, bones, poses, skeletons, animation actions, NLA strips/tracks, and audio sync
+- `schema.ts` - TypeScript types and Zod schemas for all data models
 
 ## Tech Stack
 - **Frontend**: React, Three.js, React Three Fiber, Drei, Zustand, TailwindCSS, Shadcn UI
 - **Backend**: Express.js, Node.js
+- **AI**: OpenAI GPT-4o (via Replit AI Integrations - no API key needed)
 - **Build**: Vite, TypeScript
 
 ## Routes
@@ -124,6 +143,24 @@ A web-based creative suite built with React, Three.js, and Express. Features thr
 - **Home/End**: Jump to start/end
 - **Delete**: Delete selected clip
 - **Ctrl+S**: Split clip at playhead
+
+## AI API Endpoints
+- `POST /api/ai/generate-scene` - Generate 3D scene from text prompt
+- `POST /api/ai/suggest-materials` - Get material suggestions for an object
+- `POST /api/ai/suggest-animations` - Get animation suggestions for an object
+- `POST /api/ai/enhance-scene` - Add objects to enhance existing scene
+- `POST /api/ai/chat` - Chat with AI assistant about scene
+- `POST /api/ai/texture-prompt` - Generate optimized texture prompts
+- `POST /api/generate-image` - Generate images from prompts
+
+## Performance Optimizations
+- **Debouncing**: Input handlers and API calls are debounced to prevent excessive updates
+- **Throttling**: Scroll and resize handlers throttled for smooth performance
+- **Object Pooling**: Reusable object pools for vectors and temporary objects
+- **Memoization**: Expensive computations cached with dependency tracking
+- **RAF Scheduling**: DOM updates batched via requestAnimationFrame
+- **Idle Scheduling**: Low-priority tasks scheduled during browser idle time
+- **Zustand Selectors**: Optimized selectors to minimize re-renders
 
 ## Light Types
 - **Point Light**: Omnidirectional light with distance/decay properties
@@ -170,6 +207,15 @@ A web-based creative suite built with React, Three.js, and Express. Features thr
 - **Audio Markers**: Beat, phoneme, event, and custom markers for lip sync
 
 ## Recent Changes
+- December 2024: Added AI-powered features
+  - Text-to-scene generation using GPT-4o
+  - AI material suggestions with 5 diverse options
+  - AI animation suggestions with keyframe generation
+  - Scene enhancement via AI
+  - Chat assistant with scene context awareness
+  - Texture prompt optimization
+  - AI panel integrated into 3D editor with tabs
+  - Performance utilities (debouncing, throttling, object pooling)
 - December 2024: Added character animation system
   - Bone/skeleton hierarchy with humanoid preset (20 bones)
   - Pose editor with rotation sliders and pose library
@@ -211,3 +257,4 @@ A web-based creative suite built with React, Three.js, and Express. Features thr
 ## User Preferences
 - Dark theme enabled by default (professional 3D software aesthetic)
 - Collapsible panels for maximizing viewport/preview space
+- AI panel accessible via Properties tab toggle
