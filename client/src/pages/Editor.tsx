@@ -3,8 +3,10 @@ import { Toolbar } from "@/components/Toolbar";
 import { HierarchyPanel } from "@/components/HierarchyPanel";
 import { PropertiesPanel } from "@/components/PropertiesPanel";
 import { Timeline } from "@/components/Timeline";
+import { AIPanel } from "@/components/AIPanel";
 import { useEditorStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -17,8 +19,10 @@ import {
   PanelRightOpen,
   PanelBottomClose,
   PanelBottomOpen,
+  Settings2,
+  Sparkles,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function Editor() {
   const {
@@ -37,6 +41,8 @@ export default function Editor() {
     undo,
     redo,
   } = useEditorStore();
+
+  const [rightTab, setRightTab] = useState<"properties" | "ai">("properties");
   
   // Keyboard shortcuts
   useEffect(() => {
@@ -204,10 +210,27 @@ export default function Editor() {
           )}
         </div>
         
-        {/* Right panel (Properties) */}
+        {/* Right panel (Properties / AI) */}
         {rightPanelOpen && (
-          <div className="w-72 flex-shrink-0">
-            <PropertiesPanel />
+          <div className="w-72 flex-shrink-0 flex flex-col border-l border-border">
+            <Tabs value={rightTab} onValueChange={(v) => setRightTab(v as "properties" | "ai")} className="flex-1 flex flex-col">
+              <TabsList className="m-2 grid grid-cols-2">
+                <TabsTrigger value="properties" className="text-xs gap-1" data-testid="tab-properties">
+                  <Settings2 className="h-3 w-3" />
+                  Properties
+                </TabsTrigger>
+                <TabsTrigger value="ai" className="text-xs gap-1" data-testid="tab-ai">
+                  <Sparkles className="h-3 w-3" />
+                  AI
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="properties" className="flex-1 m-0 overflow-hidden">
+                <PropertiesPanel />
+              </TabsContent>
+              <TabsContent value="ai" className="flex-1 m-0 overflow-hidden">
+                <AIPanel />
+              </TabsContent>
+            </Tabs>
           </div>
         )}
       </div>
