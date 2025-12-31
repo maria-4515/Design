@@ -72,12 +72,8 @@ interface ChatMessage {
   content: string;
 }
 
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 11);
-}
-
 export function AIPanel() {
-  const { objects, selectedObjectId, addObject, updateObject } = useEditorStore();
+  const { objects, selectedObjectId, updateObject, addGeneratedObject } = useEditorStore();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("generate");
@@ -131,29 +127,17 @@ export function AIPanel() {
     }
   }, [scenePrompt, toast]);
 
-  // Add generated objects to scene
+  // Add generated objects to scene using proper store action
   const handleAddGeneratedObjects = useCallback(() => {
     generatedObjects.forEach((obj) => {
-      const sceneObj: SceneObject = {
-        id: generateId(),
-        name: obj.name,
+      addGeneratedObject({
         type: obj.type,
+        name: obj.name,
         position: obj.position,
         rotation: obj.rotation,
         scale: obj.scale,
         material: obj.material,
-        visible: true,
-        keyframes: [],
-        parentId: null,
-        children: [],
-      };
-      
-      // Use the store directly to add objects
-      useEditorStore.setState((state) => ({
-        objects: [...state.objects, sceneObj],
-        selectedObjectId: sceneObj.id,
-        isDirty: true,
-      }));
+      });
     });
     
     setGeneratedObjects([]);
@@ -161,7 +145,7 @@ export function AIPanel() {
       title: "Objects Added",
       description: `Added ${generatedObjects.length} objects to the scene`,
     });
-  }, [generatedObjects, toast]);
+  }, [generatedObjects, addGeneratedObject, toast]);
 
   // Suggest materials
   const handleSuggestMaterials = useCallback(async () => {

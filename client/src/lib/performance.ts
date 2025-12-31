@@ -330,19 +330,22 @@ export function batchUpdates(callback: () => void): void {
  * Schedule low-priority work when browser is idle.
  * Useful for non-critical updates like analytics, prefetching.
  */
+// Track whether we're using requestIdleCallback or setTimeout fallback
+let usingIdleCallback = typeof requestIdleCallback !== "undefined";
+
 export function scheduleIdle(
   callback: () => void,
   options?: IdleRequestOptions
 ): number {
-  if (typeof requestIdleCallback !== "undefined") {
+  if (usingIdleCallback) {
     return requestIdleCallback(callback, options);
   }
-  // Fallback for Safari
+  // Fallback for Safari - cast properly for consistency
   return setTimeout(callback, options?.timeout || 100) as unknown as number;
 }
 
 export function cancelIdle(id: number): void {
-  if ("cancelIdleCallback" in window) {
+  if (usingIdleCallback) {
     cancelIdleCallback(id);
   } else {
     clearTimeout(id);

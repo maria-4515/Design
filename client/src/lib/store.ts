@@ -45,6 +45,7 @@ interface EditorState {
   
   // Actions
   addObject: (type: ObjectType) => void;
+  addGeneratedObject: (obj: { type: ObjectType; name?: string; position?: Vector3; rotation?: Vector3; scale?: Vector3; material?: Partial<Material> }) => void;
   removeObject: (id: string) => void;
   selectObject: (id: string | null) => void;
   updateObject: (id: string, updates: Partial<SceneObject>) => void;
@@ -172,6 +173,30 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     } else if (type !== "plane" && type !== "group" && type !== "ambientLight") {
       newObject.position.y = type === "sphere" ? 1 : 0.5;
     }
+    
+    set({
+      objects: [...state.objects, newObject],
+      selectedObjectId: newObject.id,
+      isDirty: true,
+    });
+  },
+  
+  addGeneratedObject: (obj) => {
+    const state = get();
+    useHistoryStore.getState().pushState(state.objects, state.selectedObjectId);
+    
+    const name = obj.name || getObjectName(obj.type, state.objects);
+    const defaultObj = createDefaultSceneObject(obj.type, name);
+    
+    const newObject: SceneObject = {
+      id: generateId(),
+      ...defaultObj,
+      name,
+      position: obj.position || defaultObj.position,
+      rotation: obj.rotation || defaultObj.rotation,
+      scale: obj.scale || defaultObj.scale,
+      material: obj.material ? { ...defaultObj.material, ...obj.material } : defaultObj.material,
+    };
     
     set({
       objects: [...state.objects, newObject],
